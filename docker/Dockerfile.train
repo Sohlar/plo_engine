@@ -1,0 +1,7 @@
+FROM pybase AS builder
+
+COPY ./*.py /app/
+
+WORKDIR /app
+
+EXPOSE 8000
