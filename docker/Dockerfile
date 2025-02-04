@@ -9,8 +9,8 @@ WORKDIR /app
 
 RUN mkdir logs models
 
-ARG REQUIREMENTS=requirements_cpu.txt
+ARG REQUIREMENTS=requirements.txt
 RUN echo "Using requirements file: $REQUIREMENTS"
-COPY ../requirements/$REQUIREMENTS /app/requirements.txt
+COPY $REQUIREMENTS /app/requirements.txt
 
 RUN pip install -r requirements.txt

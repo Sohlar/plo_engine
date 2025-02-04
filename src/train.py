@@ -1,5 +1,4 @@
 import torch
-import argparse
 import sys
 import os
 from ai_trainer import PokerGame, HumanPlayer
@@ -14,10 +13,11 @@ from metrics import loss as loss_metric, winrate, episode_reward, cumulative_rew
 
 setup_logging()
 
+STATE_SIZE = 7 + (5*2) + 2*4*2  # Game state features
+ACTION_SIZE = 4  # Available actions
+
 def load_model(model_path):
-    state_size = 7 + (5*2) + 2*4*2
-    action_size = 4
-    agent = DQNAgent(state_size, action_size)
+    agent = DQNAgent(STATE_SIZE, ACTION_SIZE)
     agent.model.load_state_dict(torch.load(model_path, weights_only=True))
     agent.model.eval()
     return agent
@@ -30,14 +30,21 @@ def list_available_models():
 def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True):
     logging.info("Starting DQN training for PLO...")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    game.oop_agent.model.to(device)
-    game.oop_agent.target_model.to(device)
-    game.ip_agent.model.to(device)
-    game.ip_agent.target_model.to(device)
+    # Initialize agents if they don't exist
+    if train_oop and game.oop_agent is None:
+        game.oop_agent = DQNAgent(STATE_SIZE, ACTION_SIZE)
+    if train_ip and game.ip_agent is None:
+        game.ip_agent = DQNAgent(STATE_SIZE, ACTION_SIZE)
 
-    game.oop_agent.device = device
-    game.ip_agent.device = device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if train_oop:
+        game.oop_agent.model.to(device)
+        game.oop_agent.target_model.to(device)
+        game.oop_agent.device = device
+    if train_ip:
+        game.ip_agent.model.to(device)
+        game.ip_agent.target_model.to(device)
+        game.ip_agent.device = device
 
     oop_cumulative_reward = 0
     ip_cumulative_reward = 0
@@ -108,65 +115,95 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
         save_model(game.ip_agent, "ip")
 
 
-def main(args):
-
+def main():
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
         torch.cuda.empty_cache()
 
-    mode = args.mode
+    while True:
+        print("\nPLO AI Training and Game Menu")
+        print("1. Train AI")
+        print("2. Play Against AI")
+        print("3. Exit")
+        
+        choice = input("\nEnter your choice (1-3): ")
 
-    if mode == 'play':
-        position = input("Enter 'oop' or 'ip': ")
+        if choice == "1":
+            print("\nTraining Configuration:")
+            print("1. Train both positions")
+            print("2. Train OOP only")
+            print("3. Train IP only")
+            print("4. Train against existing model")
+            
+            train_choice = input("\nEnter training choice (1-4): ")
+            num_hands = int(input("Enter number of hands to train: "))
+            
+            train_oop = train_choice in ["1", "2"]
+            train_ip = train_choice in ["1", "3"]
+            
+            oop_agent = None
+            ip_agent = None
 
-        print("\nAvailable Models:")
-        models = list_available_models()
-        for i, model in enumerate(models):
-            print(f"{i+1}. {model}")
+            if train_choice == "4":
+                position = input("Which position to train (oop/ip)? ").lower()
+                train_oop = position == "oop"
+                train_ip = position == "ip"
+                
+                print("\nAvailable Models:")
+                models = list_available_models()
+                for i, model in enumerate(models):
+                    print(f"{i+1}. {model}")
+                    
+                model_choice = int(input("\nEnter the number of the model to use: "))
+                model_path = f"./models/{models[model_choice-1]}"
+                
+                if not train_oop:
+                    oop_agent = load_model(model_path)
+                    oop_agent.model.eval()
+                if not train_ip:
+                    ip_agent = load_model(model_path)
+                    ip_agent.model.eval()
 
-        model_choice = int(input("\nEnter the number of the model: "))
-        chosen_model = f"./models/{models[model_choice-1]}"
+            start_time = time.time()
+            
+            game = PokerGame(
+                oop_agent=oop_agent,
+                ip_agent=ip_agent,
+                state_size=STATE_SIZE
+            )
+            train_dqn_poker(game, num_hands, batch_size=128, train_ip=train_ip, train_oop=train_oop)
+            end_time = time.time()
+            print(f"Total Training Time: {end_time - start_time:.2f} seconds")
 
-        ai_agent = load_model(chosen_model)
-        game = PokerGame(human_position=position, 
-                         oop_agent=ai_agent if position == 'ip' else None,
-                         ip_agent=ai_agent if position == 'oop' else None)
+        elif choice == "2":
+            position = input("Enter your position (oop/ip): ").lower()
+            while position not in ['oop', 'ip']:
+                position = input("Invalid position. Please enter 'oop' or 'ip': ").lower()
 
-        play_against_ai(game)
-    else:
-        episode_choice = args.hands
-        train_oop = args.train_oop
-        train_ip = args.train_ip
-        oop_agent = None
-        ip_agent = None
-
-        if not train_oop:
-            print("\nAvailable OOP Models:")
+            print("\nAvailable Models:")
             models = list_available_models()
             for i, model in enumerate(models):
                 print(f"{i+1}. {model}")
-            model_choice = int(input("\nEnter the number of the OOP model to use: "))
-            oop_model_path = f"./models/{models[model_choice-1]}"
-            oop_agent = load_model(oop_model_path)
-            oop_agent.model.eval()
 
-        if not train_ip:
-            print("\nAvailable IP Models:")
-            models = list_available_models()
-            for i, model in enumerate(models):
-                print(f"{i+1}. {model}")
-            model_choice = int(input("\nEnter the number of the IP model to use: "))
-            ip_model_path = f"./models/{models[model_choice-1]}"
-            ip_agent = load_model(ip_model_path)
-            ip_agent.model.eval()
+            model_choice = int(input("\nEnter the number of the model: "))
+            chosen_model = f"./models/{models[model_choice-1]}"
 
-        start_time = time.time()
-        game = PokerGame()
-        num_episodes = episode_choice
-        batch_size = 128
-        train_dqn_poker(game, num_episodes, batch_size)
-        end_time = time.time()
-        print(f"Total Time: {end_time - start_time:.2f} seconds")
+            ai_agent = load_model(chosen_model)
+            game = PokerGame(
+                human_position=position,
+                oop_agent=ai_agent if position == 'ip' else None,
+                ip_agent=ai_agent if position == 'oop' else None,
+                state_size=STATE_SIZE
+            )
+
+            play_against_ai(game)
+
+        elif choice == "3":
+            print("Exiting...")
+            sys.exit(0)
+        
+        else:
+            print("Invalid choice. Please try again.")
 
 def play_against_ai(game):
     while True:
@@ -187,15 +224,5 @@ def save_model(agent, position):
 
 if __name__ == "__main__":
     start_http_server(8000)
-    parser = argparse.ArgumentParser(description="PLO model DQN")
-    parser.add_argument("--mode", type=str, choices=['train', 'play'], required=True, help="'Play' or 'Train'")
-    parser.add_argument("--hands", type=int, required=True, help="Number of hands to train on")
-    parser.add_argument("--train_ip", action="store_true", help="Train an IP model")
-    parser.add_argument("--train_oop", action="store_true", help="Train an OOP model")
-
-    args = parser.parse_args()
-     
-    if args.mode == 'train' and args.hands is None:
-        parser.error("--hands is required in training mode.")
-    main(args)
+    main()
 

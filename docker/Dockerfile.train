@@ -1,7 +1,10 @@
-FROM pybase AS builder
+FROM pybase
 
-COPY ./*.py /app/
+# Copy the source code
+COPY src/ /app/src/
 
-WORKDIR /app
+# Set environment variables if needed
+ENV PYTHONPATH=/app
 
-EXPOSE 8000
+# Command to run the trainer
+CMD ["python3", "src/train.py"]

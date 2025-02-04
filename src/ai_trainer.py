@@ -81,7 +81,14 @@ class Deck:
 
 
 class PokerGame:
-    def __init__(self, human_position=None, oop_agent=None, ip_agent=None):
+    def __init__(self, human_position=None, oop_agent=None, ip_agent=None, state_size=None):
+        self.state_size = state_size or (7 + (5*2) + 2*4*2)  # Use provided state_size or calculate default
+        self.action_size = 4
+        
+        self.human_position = human_position
+        self.oop_agent = oop_agent or DQNAgent(self.state_size, self.action_size)
+        self.ip_agent = ip_agent or DQNAgent(self.state_size, self.action_size)
+        
         self.deck = Deck()
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -97,26 +104,6 @@ class PokerGame:
             self.ip_player = Player(name="IP", chips=200)
 
         self.initialize_game_state()
-
-        # Initialize DQN agents
-        self.state_size = self.calculate_state_size()
-        self.action_size = 4  # check, call, bet, fold
-
-        if oop_agent:
-            self.oop_agent = oop_agent
-            self.oop_agent.name = "OOP"
-        else:
-            self.oop_agent = DQNAgent(self.state_size, self.action_size)
-            self.oop_agent.name = "OOP"
-        if ip_agent:
-            self.ip_agent = ip_agent
-            self.oop_agent.name = "IP"
-        else:
-            self.ip_agent = DQNAgent(self.state_size, self.action_size)
-            self.oop_agent.name = "IP"
-
-        self.oop_agent.model.to(self.device)
-        self.ip_agent.model.to(self.device)
 
         self.oop_loss = None
         self.ip_loss = None
