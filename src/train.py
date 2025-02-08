@@ -2,7 +2,7 @@ import torch
 import sys
 import os
 from ai_trainer import PokerGame, HumanPlayer
-from agent import DQNAgent
+from agent2 import DQNAgent, PLONetwork
 import time
 from logging_config import setup_logging
 import logging
@@ -18,8 +18,23 @@ ACTION_SIZE = 4  # Available actions
 
 def load_model(model_path):
     agent = DQNAgent(STATE_SIZE, ACTION_SIZE)
-    agent.model.load_state_dict(torch.load(model_path, weights_only=True))
-    agent.model.eval()
+    
+    try:
+        # Load the state dict
+        state_dict = torch.load(model_path, weights_only=True)
+        
+        # Create new PLONetwork model
+        agent.model = PLONetwork(STATE_SIZE).to(agent.device)
+        agent.model.load_state_dict(state_dict)
+        agent.model.eval()
+        
+    except RuntimeError as e:
+        print(f"Error loading model: {e}")
+        print("\nModel architecture mismatch. Available options:")
+        print("1. Train a new model with current architecture")
+        print("2. Use a compatible model")
+        sys.exit(1)
+        
     return agent
 
 def list_available_models():
@@ -207,20 +222,33 @@ def main():
 
 def play_against_ai(game):
     while True:
-        game_state = game.play_hand()
+        game_state, oop_reward, ip_reward = game.play_hand()  # Unpack all three values
         print("\nFinal Chip Counts:")
         print(f"OOP Player chips: {game_state['oop_player']['chips']}")
         print(f"IP Player chips: {game_state['ip_player']['chips']}")
+        
+        # Optionally show rewards
+        print(f"\nHand Results:")
+        print(f"OOP Reward: {oop_reward}")
+        print(f"IP Reward: {ip_reward}")
          
-        play_again = input("Do you want to play again (y/n)")
-        if play_again != 'y':
+        play_again = input("\nDo you want to play again (y/n)? ")
+        if play_again.lower() != 'y':
             break
         
 def save_model(agent, position):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"./models/{position}_dqn_model_{timestamp}.pth"
+    
+    # Determine model type
+    model_type = "plo" if isinstance(agent.model, PLONetwork) else "dqn"
+    
+    # Create models directory if it doesn't exist
+    os.makedirs("./models", exist_ok=True)
+    
+    # Save with architecture type in filename
+    filename = f"./models/{position}_{model_type}_model_{timestamp}.pth"
     torch.save(agent.model.state_dict(), filename)
-    print(f"Saved {position} model: {filename}")
+    print(f"Saved {model_type.upper()} {position} model: {filename}")
 
 if __name__ == "__main__":
     start_http_server(8000)

@@ -77,7 +77,11 @@ class MCTSNode:
 
     def simulate_action(self, state, action):
         """Simulate taking an action"""
-        new_state = state.copy()
+        # Convert tensor to numpy, copy, then back to tensor
+        if torch.is_tensor(state):
+            new_state = state.clone().detach()
+        else:
+            new_state = state.copy()
         
         # Update pot and chips based on action
         if action == "fold":
@@ -292,19 +296,14 @@ class DQNAgent:
 
 
     def replay(self, batch_size):
-        """
-        Train the model using experiences from the replay memory.
-
-        Args:
-            batch_size (int): The number of samples to use for training.
-        """
-
+        """Train the model using experiences from the replay memory."""
         if len(self.memory) < self.batch_size:
             return
 
-        minibatch = random.sample(self.memory, self.batch_size)  
+        minibatch = random.sample(self.memory, self.batch_size)
         states, actions, rewards, next_states, dones = zip(*minibatch)
 
+        # Convert to tensors for batch processing
         states = torch.stack(states)
         actions = torch.cat(actions)
         rewards = torch.cat(rewards)
@@ -314,21 +313,23 @@ class DQNAgent:
         # Get current predictions
         current_policy, current_value = self.model(states)
         
-        # Get next state predicitions from target network
+        # Get next state predictions from target network
         with torch.no_grad():
             next_policy, next_value = self.target_model(next_states)
 
-        # Calculate targets
-        value_target = rewards + self.gamma * next_value * (1-dones)
+        # Calculate value target
+        value_target = rewards + self.gamma * next_value.squeeze(-1) * (1-dones)
+        value_loss = nn.MSELoss()(current_value.squeeze(-1), value_target)
+
+        # Calculate policy target
+        advantages = rewards + self.gamma * next_value.squeeze(-1) * (1-dones) - current_value.squeeze(-1)
         policy_target = current_policy.clone()
-
-        # Update policy target based on advantages
-        advantages = rewards + self.gamma * next_value * (1-dones) - current_value
+        
+        # Update policy based on advantages
         for i in range(batch_size):
-            policy_target[i, actions[i]] += advantages[i]
+            policy_target[i, actions[i]] = policy_target[i, actions[i]] + advantages[i]
 
-        # Calculate losses
-        value_loss = nn.MSELoss()(current_value, value_target)
+        # Policy loss with cross entropy
         policy_loss = nn.CrossEntropyLoss()(current_policy, policy_target)
 
         # Combined loss
@@ -339,7 +340,7 @@ class DQNAgent:
         loss.backward()
         self.optimizer.step()
 
-        # Decay epsioln
+        # Decay epsilon
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
