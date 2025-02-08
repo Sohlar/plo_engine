@@ -1,6 +1,6 @@
 # PLO AI Training and CLI Game
 
-This project contains the AI components for a Pot Limit Omaha (PLO) poker trainer, including a Deep Q-Network (DQN) agent, training script, and metrics collection.
+This project contains the AI components for a Pot Limit Omaha (PLO) poker trainer, including a Monte Carlo Tree Search (MCTS) with Neural Network hybrid agent, training script, and metrics collection.
 
 ## Quick Start
 
@@ -43,6 +43,27 @@ When selecting "Play Against AI":
 2. Select a pre-trained model
 3. Play hands interactively against the AI
 
+## AI Architecture
+
+The AI uses a hybrid approach combining MCTS with a neural network:
+
+### Neural Network
+- Shared feature extraction layers
+- Separate policy and value heads
+- Policy head outputs action probabilities
+- Value head predicts position value
+
+### Decision Making
+- Preflop and small pots: Direct neural network policy
+- Postflop and big pots: MCTS with neural network guidance
+- Dynamic bet sizing based on predicted value and confidence
+
+### MCTS Implementation
+- Configurable simulation count (default: 25)
+- Maximum tree depth of 3 for efficiency
+- PUCT-based node selection
+- Value backup through visited nodes
+
 ## CUDA Support
 
 This project supports CUDA for GPU acceleration. To use CUDA:
@@ -71,7 +92,7 @@ This project supports CUDA for GPU acceleration. To use CUDA:
 ## Project Structure
 
 ### Key Files
-- `agent.py`: Defines the DQN agent for AI decision-making
+- `agent2.py`: Defines the MCTS-NN hybrid agent for AI decision-making
 - `train.py`: Main script for training the AI and playing against it
 - `metrics.py`: Sets up metrics collection for monitoring AI performance
 - `ai_trainer.py`: Contains the core poker game logic and training environment
@@ -82,10 +103,22 @@ This project supports CUDA for GPU acceleration. To use CUDA:
 
 ## Customization
 
-- Adjust hyperparameters in agent.py to optimize AI performance
-- Modify the network architecture in the DQN class for different model complexities
-- Add or remove metrics in metrics.py as needed for your monitoring setup
+- Adjust MCTS parameters in agent2.py (simulation count, tree depth)
+- Modify the network architecture in the PLONetwork class
+- Tune the balance between MCTS and direct policy use
+- Add or remove metrics in metrics.py as needed
 
 ## Models
 
 Trained models are saved in the `./models` directory with timestamps. When playing against the AI or training against an existing model, you can select from these saved models.
+
+## Development Status
+
+1. ✅ Implement new MCTS-NN hybrid architecture
+2. 🔄 Benchmark performance
+3. 🔄 Optimize hyperparameters
+4. 🔄 Scale training
+
+
+
+

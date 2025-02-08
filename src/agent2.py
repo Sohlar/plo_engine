@@ -8,34 +8,44 @@ import random
 from collections import deque
 from metrics import q_value, epsilon, action_taken, bet_size_metric
 
+# Add near top of file, after imports
+action_to_index = {
+    'fold': 0,
+    'check': 1,
+    'call': 2,
+    'bet': 3
+}
+
+index_to_action = {v: k for k, v in action_to_index.items()}
 
 class PLONetwork(nn.Module):
     def __init__(self, state_size):
-        super(PLONetwork, self).__init_()
-        self.share = nn.Sequential(
+        super(PLONetwork, self).__init__()
+        self.shared = nn.Sequential(
             nn.Linear(state_size, 512),
             nn.ReLU(),
-            nn.Linear(512,512),
+            nn.Linear(512, 512),
             nn.ReLU(),
         )
 
         self.policy_head = nn.Sequential(
-            nn.Linear(512,256),
-            nn.ReLU(),
-            nn.Linear(256,4),
-            nn.Softmax(dim=1)
+            nn.Linear(512, 256), 
+            nn.ReLU(), 
+            nn.Linear(256, 4)  # Remove Softmax from Sequential
         )
 
         self.value_head = nn.Sequential(
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.Linear(256, 1),
+            nn.Linear(512, 256), 
+            nn.ReLU(), 
+            nn.Linear(256, 1), 
             nn.Tanh()
         )
-    
+
     def forward(self, x):
         shared_features = self.shared(x)
-        policy = self.policy_head(shared_features)
+        policy_logits = self.policy_head(shared_features)
+        # Apply softmax with proper reshaping
+        policy = torch.softmax(policy_logits, dim=-1)  # Use -1 for last dimension
         value = self.value_head(shared_features)
         return policy, value
 
@@ -44,13 +54,46 @@ class MCTSNode:
     def __init__(self, state, parent=None):
         self.state = state
         self.parent = parent
-        self.children = {} # Maps actions to child nodes
+        self.children = {}  # Maps actions to child nodes
         self.visit_count = 0
         self.value_sum = 0
-        self.prior_policy = None # Probability from policy network for this action
+        self.prior_policy = None  # Probability from policy network for this action
+        self.game = None  # Reference to game instance for valid actions/simulation
+
+    def get_valid_actions(self, state):
+        """Get valid actions for the current state"""
+        # For preflop
+        if len(state[6:16]) // 2 == 0:  # No community cards
+            if state[2] == 0:  # No current bet
+                return ["check", "bet"]
+            else:
+                return ["fold", "call", "bet"]
+        # For postflop
+        else:
+            if state[2] == 0:  # No current bet
+                return ["check", "bet"]
+            else:
+                return ["fold", "call", "bet"]
+
+    def simulate_action(self, state, action):
+        """Simulate taking an action"""
+        new_state = state.copy()
+        
+        # Update pot and chips based on action
+        if action == "fold":
+            new_state[0] = 0  # Clear pot
+        elif action == "call":
+            call_amount = new_state[2]  # Current bet
+            new_state[0] += call_amount  # Add to pot
+        elif action == "bet":
+            bet_amount = min(new_state[3], new_state[0])  # Min of chips or pot
+            new_state[0] += bet_amount  # Add to pot
+            new_state[2] = bet_amount  # Set current bet
+            
+        return new_state
 
     def select_child(self):
-        best_score = float('-inf')
+        best_score = float("-inf")
         best_child = None
 
         for action, child in self.children.items():
@@ -63,24 +106,26 @@ class MCTSNode:
 
     def get_puct_score(self):
         if self.visit_count == 0:
-            return float('inf') # Unvisited nodes get prio
-        
-        # Exploitation: Average value from sims
-        q_value = self.value_sum / self.visit_count
-        # Higher value = better pre sim results
+            return float("inf")
 
-        # Exploration: Based on prior poliocy and visit counts
+        q_value = self.value_sum / self.visit_count
         exploration = (
-            2.0 *                               # Exploration Constanct
-            self.prior_policy *                 # Network confidence in action
-            math.sqrt(self.parent.visit_count)  # Parent visits
-            / (1 + self.visit_count)            # Reduced exploration for visited nodes
+            2.0
+            * self.prior_policy
+            * math.sqrt(self.parent.visit_count)
+            / (1 + self.visit_count)
         )
-        # Higher when:
-        # - Network thinks action is promising
-        # - Parent node heavily visited
-        # - Current node rarely visited
         return q_value + exploration
+
+    def expand(self, policy_probs):
+        """Expands node with children for all valid actions"""
+        valid_actions = self.get_valid_actions(self.state)
+        
+        for action in valid_actions:
+            new_state = self.simulate_action(self.state, action)
+            child = MCTSNode(new_state, parent=self)
+            child.prior_policy = policy_probs[action_to_index[action]]
+            self.children[action] = child
 
 
 # fmt: off
@@ -106,12 +151,12 @@ class DQNAgent:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # GPU acceleration for faster learning
 
         # Initialize network
-        self.model = DQN(state_size, action_size).to(self.device)  # Main network for action selection
-        self.target_model = DQN(state_size, action_size).to(self.device)  # Target network for stable Q-learning
+        self.model = PLONetwork(state_size).to(self.device)  # Main network for action selection
+        self.target_model = PLONetwork(state_size).to(self.device)  # Target network for stable Q-learning
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)  # Adam optimizer works well for poker's noisy rewards
 
         # MCTS parameters
-        self.mcts_simulations = 100 # Number of searches
+        self.mcts_simulations = 25  # Reduce from 100 to 25
         self.min_bet = 2
 
 
@@ -135,15 +180,19 @@ class DQNAgent:
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state, valid_actions, max_bet, min_bet):
+        print('\n')
+        print(state)
+        print("\n")
         street = self._get_street(state)
-
-        if street <= 1:
+        pot_size = state[0]  # First value in state tensor is pot size
+        
+        # Changed logic: Use Nash for preflop and small pots
+        if street == 0 or pot_size <= 50:  # Preflop or small pot
             return self._get_nash_action(state, valid_actions, max_bet, min_bet)
         else:
             return self._get_mcts_action(state, valid_actions, max_bet, min_bet)
         
     def _get_nash_action(self, state, valid_actions, max_bet, min_bet):
-        
         state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
@@ -172,20 +221,23 @@ class DQNAgent:
             bet_size = self._get_bet_size(value.item(), valid_probs[action_idx], max_bet, min_bet)
             return action, bet_size
 
-        return action
+        # Return tuple with None for bet_size for non-bet actions
+        return action, None
     
     def _get_mcts_action(self, state, valid_actions, max_bet, min_bet):
-        
         root = MCTSNode(state)
-
+        max_depth = 3  # Limit tree depth
+        
         for _ in range(self.mcts_simulations):
             node = root
             search_path = [node]
-
-            # Selection
-            while node.children and not self._is_terminal(node.state):
+            depth = 0
+            
+            # Add depth check
+            while node.children and not self._is_terminal(node.state) and depth < max_depth:
                 node = node.select_child()
                 search_path.append(node)
+                depth += 1
 
             # Expansion
             if not self._is_terminal(node.state):
@@ -216,16 +268,18 @@ class DQNAgent:
             )
             return best_action, bet_size
         
-        return best_action
+        # Return tuple with None for bet_size for non-bet actions
+        return best_action, None
 
     def _get_bet_size(self, value, action_prob, max_bet, min_bet):
         """Calculate bet size based on hand strength and action probability"""
         # Scale bet size based on value and action probability
-        sizing_factor = (value+1) / 2 # Convert from [-1,1] to [0,1]
-        confidence = action_prob
+        sizing_factor = (value+1) / 2  # Convert from [-1,1] to [0,1]
+        confidence = action_prob.item() if torch.is_tensor(action_prob) else action_prob  # Convert tensor to float
 
         # Combine factors for final sizing
         bet_size = min_bet + (max_bet-min_bet) * sizing_factor * confidence
+        bet_size = float(bet_size) if torch.is_tensor(bet_size) else bet_size  # Convert to float if tensor
         bet_size = max(min_bet, min(max_bet, round(bet_size, 0)))
 
         # Record metric
@@ -281,7 +335,7 @@ class DQNAgent:
         loss = value_loss + policy_loss
 
         # Optimize
-        self.optimizer.zer_grad()
+        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
@@ -300,10 +354,36 @@ class DQNAgent:
         self.target_model.load_state_dict(self.model.state_dict())
 
     def _get_street(self, state):
-        pass
+        """Determine street based on number of community cards"""
+        # Current version tries to access state.street which doesn't exist
+        num_cards = len(state[6:16]) // 2  # Extract community cards from state tensor
+        if num_cards == 0:
+            return 0  # preflop
+        elif num_cards == 3:
+            return 1  # flop
+        elif num_cards == 4:
+            return 2  # turn
+        else:
+            return 3  # river
     
     def _is_terminal(self, state):
-        pass
+        """Check if state is terminal"""
+        # For MCTS simulation
+        if isinstance(state, dict):
+            return state.get('hand_over', False) or state.get('num_active_players', 2) == 1
+        return False
     
     def _get_terminal_value(self, state):
-        pass
+        """Get value of terminal state"""
+        # For MCTS simulation
+        if isinstance(state, dict):
+            if state.get('num_active_players', 2) == 1:
+                # Win/loss based on if current player won
+                return 1.0 if state['current_player'] == self.name else -1.0
+            
+            # For showdown, calculate based on chips
+            player_key = 'oop_player' if self.name == 'OOP' else 'ip_player'
+            chips = state[player_key]['chips']
+            value = (chips - 200) / 200  # Normalize around starting stack
+            return max(min(value, 1.0), -1.0)
+        return 0.0
