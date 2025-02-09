@@ -2,7 +2,6 @@ FROM pybase
 
 # Copy the source code
 COPY src/ /app/src/
-COPY tests/ /app/src
 
 # Set environment variables if needed
 ENV PYTHONPATH=/app
