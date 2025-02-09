@@ -15,7 +15,7 @@ from metrics import loss as loss_metric, winrate, episode_reward, cumulative_rew
 
 setup_logging()
 
-STATE_SIZE = 7 + (5*2) + 2*4*2  # Game state features
+STATE_SIZE = 8 + (5*2) + 2*4*2  # Game state features
 ACTION_SIZE = 4  # Available actions
 BATCH_SIZE = 512
 

@@ -63,14 +63,14 @@ class MCTSNode:
     def get_valid_actions(self, state):
         """Get valid actions for the current state"""
         # For preflop
-        if len(state[6:16]) // 2 == 0:  # No community cards
-            if state[2] == 0:  # No current bet
+        if len(state[7:17]) // 2 == 0:  # No community cards
+            if state[3] == 0:  # No current bet
                 return ["check", "bet"]
             else:
                 return ["fold", "call", "bet"]
         # For postflop
         else:
-            if state[2] == 0:  # No current bet
+            if state[3] == 0:  # No current bet
                 return ["check", "bet"]
             else:
                 return ["fold", "call", "bet"]
