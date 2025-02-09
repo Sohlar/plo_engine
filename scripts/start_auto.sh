@@ -29,7 +29,7 @@ docker run -d --name prom_poker --network plo_network -p 9090:9090 prom_poker
 
 # Run the trainer in interactive mode
 echo "Starting PLO trainer in interactive mode..."
-docker run -it \
+docker run -d \
     --name plo_trainer \
     --network plo_network \
     -v ./models:/app/models \
