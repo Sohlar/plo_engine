@@ -69,7 +69,7 @@ def train_dqn_poker(game, episodes, batch_size=BATCH_SIZE, train_ip=True, train_
 
 
     for e in range(episodes):
-        # print(f"Hand #{e}")
+        print(f"Hand #{e}")
         # Can view at localhost:9090 {episodes_completed_total} metric
         game_state, oop_reward, ip_reward = game.play_hand()
 
