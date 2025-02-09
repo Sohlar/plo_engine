@@ -115,10 +115,7 @@ Trained models are saved in the `./models` directory with timestamps. When playi
 ## Development Status
 
 1. ✅ Implement new MCTS-NN hybrid architecture
-2. 🔄 Benchmark performance
-3. 🔄 Optimize hyperparameters
-4. 🔄 Scale training
-
-
-
-
+2. 🔄 Multi-model weight averaging
+3. 🔄 Benchmark performance
+5. 🔄 Optimize hyperparameters
+6. 🔄 Scale training
