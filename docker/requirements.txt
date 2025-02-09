@@ -1,0 +1,25 @@
+# Core ML and computation
+torch==2.4.0
+numpy==1.26.4
+sympy==1.13.1
+
+# Poker evaluation
+phevaluator==0.5.3.1
+
+# Monitoring and metrics
+prometheus_client==0.20.0
+psutil==6.0.0
+
+# Web/Network dependencies
+autobahn          # WebSocket support
+channels==4.1.0   # Async communication
+channels-redis==4.2.0  # Redis backend for channels
+redis==5.0.7      # Required for channels-redis
+Twisted           # Network framework
+cryptography      # Required for secure connections
+
+# Required dependencies for the above packages
+typing_extensions==4.12.2
+zope.interface==6.4.post2
+pyOpenSSL         # Required for secure connections
+service-identity  # Required for secure connections
