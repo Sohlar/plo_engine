@@ -68,6 +68,7 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
 
 
     for e in range(episodes):
+        print(f"Hand #{e}")
         game_state, oop_reward, ip_reward = game.play_hand()
 
         oop_cumulative_reward += oop_reward
@@ -105,10 +106,8 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
         pot_size.set(game_state['pot'])
         community_cards.set(len(game_state['community_cards']))
 
-
         # Progress Report
         if e % 100 == 0:
-
             episode_count = max(e/100, 1)
             oop_winrate = oop_cumulative_reward/episode_count
             ip_winrate = ip_cumulative_reward/episode_count
@@ -138,7 +137,7 @@ def main(args):
         torch.cuda.empty_cache()
 
     while True:
-        print(args)
+        #print(args)
         if args.interactive == False and args.numhands != 0: choice = "4"
         else:
             print("\nPLO AI Training and Game Menu")
@@ -279,9 +278,5 @@ if __name__ == "__main__":
     parser.add_argument("-i","--interactive", help="Set to 1 for interactive mode, must set hands if this flag used",action="store_false")
     parser.add_argument("-n","--numhands", help="Set number of hands to run", type=int, default=0)
     args = parser.parse_args()
-    #print(args)
-    #print((args.interactive))
-    #print((args.numhands))
-
     main(args)
 
