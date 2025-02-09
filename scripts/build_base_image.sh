@@ -5,8 +5,6 @@ cd ../ai
 BUILD_TYPE=$1
 
 if [ -z "$BUILD_TYPE" ]; then
-  # Architecture Detection
-  ARCH=$(uname -m)
   if nvidia-smi ; then
     BUILD_TYPE="cuda"
   else

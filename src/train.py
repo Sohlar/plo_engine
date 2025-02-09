@@ -223,7 +223,8 @@ def main(args):
             end_time = time.time()
             print(f"Total Training Time: {end_time - start_time:.2f} seconds")
             if args.interactive == False:
-                sys.exit(0)
+                return(True)
+                #sys.exit(0)
 
         elif choice == "2":
             position = input("Enter your position (oop/ip): ").lower()
@@ -288,7 +289,6 @@ def save_model(agent, position):
     print(f"Saved {model_type.upper()} {position} model: {filename}")
 
 if __name__ == "__main__":
-    import argparse
     start_http_server(8000)
 
     parser = argparse.ArgumentParser(description="PLO Training Simulator",prog="python3 train.py")

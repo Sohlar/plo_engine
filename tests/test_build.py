@@ -1,0 +1,12 @@
+import train
+
+class args:
+    interactive = False
+    numhands = 100
+
+
+def check():
+    return train.main(args)
+
+def test_answer():
+    assert check()
