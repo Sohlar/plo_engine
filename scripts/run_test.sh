@@ -24,6 +24,6 @@ docker run -it \
     --network plo_network \
     -v ./models:/app/models \
     -p 8000:8000 \
-    plo_trainer /bin/bash
+    plo_trainer pytest
 
 #echo "Access Prometheus at http://localhost:9090"
