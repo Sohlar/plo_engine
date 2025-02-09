@@ -7,13 +7,10 @@ BUILD_TYPE=$1
 if [ -z "$BUILD_TYPE" ]; then
   # Architecture Detection
   ARCH=$(uname -m)
-  if [ "$ARCH" = "x86_64" ]; then
+  if nvidia-smi ; then
     BUILD_TYPE="cuda"
-  elif [ "$ARCH" = "arm64" ]; then
-    BUILD_TYPE="cpu"
   else
-    echo "Unsupported architecture: $ARCH"
-    exit 1
+    BUILD_TYPE="cpu"
   fi
 fi
 
