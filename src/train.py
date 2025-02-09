@@ -17,9 +17,10 @@ setup_logging()
 
 STATE_SIZE = 7 + (5*2) + 2*4*2  # Game state features
 ACTION_SIZE = 4  # Available actions
+BATCH_SIZE = 512
 
 def load_model(model_path):
-    agent = DQNAgent(STATE_SIZE, ACTION_SIZE)
+    agent = DQNAgent(STATE_SIZE, ACTION_SIZE, BATCH_SIZE)
     
     try:
         # Load the state dict
@@ -44,7 +45,7 @@ def list_available_models():
     models = [f for f in os.listdir(models_dir) if f.endswith('.pth')]
     return models
 
-def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True):
+def train_dqn_poker(game, episodes, batch_size=BATCH_SIZE, train_ip=True, train_oop=True):
     logging.info("Starting DQN training for PLO...")
 
     # Initialize agents if they don't exist
@@ -68,7 +69,8 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
 
 
     for e in range(episodes):
-        print(f"Hand #{e}")
+        # print(f"Hand #{e}")
+        # Can view at localhost:9090 {episodes_completed_total} metric
         game_state, oop_reward, ip_reward = game.play_hand()
 
         oop_cumulative_reward += oop_reward
@@ -217,7 +219,7 @@ def main(args):
                 ip_agent=ip_agent,
                 state_size=STATE_SIZE
             )
-            train_dqn_poker(game, num_hands, batch_size=128, train_ip=train_ip, train_oop=train_oop)
+            train_dqn_poker(game, num_hands, batch_size=BATCH_SIZE, train_ip=train_ip, train_oop=train_oop)
             end_time = time.time()
             print(f"Total Training Time: {end_time - start_time:.2f} seconds")
             if args.interactive == False:

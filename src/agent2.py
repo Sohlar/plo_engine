@@ -134,7 +134,7 @@ class MCTSNode:
 
 # fmt: off
 class DQNAgent:
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, batch_size):
         """
         Initialize the DQN Agent.
 
@@ -146,7 +146,7 @@ class DQNAgent:
         self.state_size = state_size  # Dimension of poker game state (cards, pot, etc.)
         self.action_size = action_size  # Number of possible actions (fold, call, raise)
         self.memory = deque(maxlen=10000)  # Experience replay buffer, crucial for stable learning in poker
-        self.batch_size = 128
+        self.batch_size = batch_size
         self.gamma = 0.95    # Discount rate for future rewards, important for long-term strategy
         self.epsilon = 1.0   # Start with 100% exploration to learn diverse poker situations
         self.epsilon_min = 0.01  # Minimum exploration to always adapt to opponent's strategy
