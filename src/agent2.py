@@ -184,9 +184,9 @@ class DQNAgent:
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state, valid_actions, max_bet, min_bet):
-        print('\n')
-        print(state)
-        print("\n")
+        #print('\n')
+        #print(state)
+        #print("\n")
         street = self._get_street(state)
         pot_size = state[0]  # First value in state tensor is pot size
         

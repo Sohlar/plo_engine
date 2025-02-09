@@ -71,7 +71,7 @@ class HumanPlayer(Player):
                             bet_size = int(input(f"Enter the bet size (max {max_bet}): "))
                             if bet_size <= max_bet and bet_size > 0:
                                 return action, bet_size
-                            print(f"Invalid bet size. Please enter a value between 1 and {max_bet}")
+                            #print(f"Invalid bet size. Please enter a value between 1 and {max_bet}")
                         except ValueError:
                             print("Please enter a valid number")
                 return action
@@ -460,7 +460,7 @@ class PokerGame:
                 )
                 player = "ip"
 
-            print(f"Player: {self.current_player} action: {action}")
+            #print(f"Player: {self.current_player} action: {action}")
 
             # Ensure bet size for bet actions
             if action == 3 or action == "bet":  # Handle both int and string actions
@@ -472,7 +472,7 @@ class PokerGame:
             return action, None
 
     def preflop_betting(self):
-        print("Entering preflop")
+        #print("Entering preflop")
         self.current_bet, self.num_actions = 2, 0
         self.current_player = self.ip_player  # IP acts first preflop
         self.oop_committed = 2  # OOP posts big blind
@@ -519,7 +519,7 @@ class PokerGame:
             else:
                 action_int = self.action_to_int(action)
             
-            print(f"Action: {action}, Bet Size: {bet_size}")
+            #print(f"Action: {action}, Bet Size: {bet_size}")
             
             # Store experience with integer action
             if self.current_player == self.oop_player:
@@ -616,9 +616,9 @@ class PokerGame:
         max_bet = 0
         state = self.get_game_state()
         pot = state["pot"]
-        print(f"POT: {pot}")
+        #print(f"POT: {pot}")
         current_bet = state["current_bet"]
-        print(f"CURRENT_BET: {current_bet}")
+        #print(f"CURRENT_BET: {current_bet}")
         player_chips = self.current_player.chips
         player_committed = (
             self.oop_committed
@@ -723,7 +723,7 @@ class PokerGame:
         return all_in, bet_size
 
     def postflop_betting(self, street):
-        print(f"Entering {street}")
+        #print(f"Entering {street}")
         logging.info("Starting Postflop Betting")
         state = self.get_game_state()
         initial_pot = state["pot"]
@@ -781,7 +781,7 @@ class PokerGame:
             else:
                 action_int = self.action_to_int(action)
 
-            print(f"Action: {action}, Bet Size: {bet_size}")
+            #print(f"Action: {action}, Bet Size: {bet_size}")
 
             # Store experience with integer action
             if self.current_player == self.oop_player:

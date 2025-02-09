@@ -159,7 +159,8 @@ def main(args):
                 print("2. Train OOP only")
                 print("3. Train IP only")
                 print("4. Train against existing model")
-                train_choice = input("\nEnter training choice (1-4): ")
+                print("5. Train existing model")
+                train_choice = input("\nEnter training choice (1-5): ")
 
             else:
                 train_choice = "1"
@@ -169,8 +170,8 @@ def main(args):
             else:
                 num_hands = int(input("Enter number of hands to train: "))
 
-            train_oop = train_choice in ["1", "2"]
-            train_ip = train_choice in ["1", "3"]
+            train_oop = train_choice in ["1", "2", "5"]
+            train_ip = train_choice in ["1", "3", "5"]
             
             oop_agent = None
             ip_agent = None
@@ -194,6 +195,20 @@ def main(args):
                 if not train_ip:
                     ip_agent = load_model(model_path)
                     ip_agent.model.eval()
+
+            if train_choice == "5":
+                print("\nAvailable Models:")
+                models = list_available_models()
+                for i, model in enumerate(models):
+                    print(f"{i+1}. {model}")
+                    
+                ip_model_choice = int(input("\nEnter the number of the IP model to use: "))
+                oop_model_choice = int(input("\nEnter the number of the OOP model to use: "))
+                ip_model_path = f"./models/{models[ip_model_choice-1]}"
+                oop_model_path = f"./models/{models[oop_model_choice-1]}"
+
+                oop_agent = load_model(oop_model_path)
+                ip_agent = load_model(ip_model_path)
 
             start_time = time.time()
             
