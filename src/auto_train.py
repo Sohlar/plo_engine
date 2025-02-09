@@ -2,14 +2,12 @@ import torch
 import sys
 import os
 from ai_trainer import PokerGame, HumanPlayer
-from agent2 import DQNAgent, PLONetwork
+from agent import DQNAgent
 import time
 from logging_config import setup_logging
 import logging
 import torch.cuda
 import datetime
-import argparse
-
 from prometheus_client import start_http_server
 from metrics import loss as loss_metric, winrate, episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon, update_system_metrics
 
@@ -20,23 +18,8 @@ ACTION_SIZE = 4  # Available actions
 
 def load_model(model_path):
     agent = DQNAgent(STATE_SIZE, ACTION_SIZE)
-    
-    try:
-        # Load the state dict
-        state_dict = torch.load(model_path, weights_only=True)
-        
-        # Create new PLONetwork model
-        agent.model = PLONetwork(STATE_SIZE).to(agent.device)
-        agent.model.load_state_dict(state_dict)
-        agent.model.eval()
-        
-    except RuntimeError as e:
-        print(f"Error loading model: {e}")
-        print("\nModel architecture mismatch. Available options:")
-        print("1. Train a new model with current architecture")
-        print("2. Use a compatible model")
-        sys.exit(1)
-        
+    agent.model.load_state_dict(torch.load(model_path, weights_only=True))
+    agent.model.eval()
     return agent
 
 def list_available_models():
@@ -132,44 +115,32 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
         save_model(game.ip_agent, "ip")
 
 
-def main(args):
+def main():
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
         torch.cuda.empty_cache()
 
     while True:
-        print(args)
-        if args.interactive == False and args.numhands != 0: choice = "4"
-        else:
-            print("\nPLO AI Training and Game Menu")
-            print("1. Train AI")
-            print("2. Play Against AI")
-            print("3. Exit")
-            print("4. Train AI with no debugging, assumes both positions")
+        print("\nPLO AI Training and Game Menu")
+        print("1. Train AI")
+        print("2. Play Against AI")
+        print("3. Exit")
+        
+        #choice = input("\nEnter your choice (1-3): ")
+        choice = 1
+
+        if choice == "1":
+            print("\nTraining Configuration:")
+            print("1. Train both positions")
+            print("2. Train OOP only")
+            print("3. Train IP only")
+            print("4. Train against existing model")
             
-            choice = input("\nEnter your choice (1-3): ")
-
-        print(args.interactive)
-        print(choice)
-
-        if choice == "1" or choice == "4":
-
-            if choice == "1":
-                print("\nTraining Configuration:")
-                print("1. Train both positions")
-                print("2. Train OOP only")
-                print("3. Train IP only")
-                print("4. Train against existing model")
-                train_choice = input("\nEnter training choice (1-4): ")
-
-            else:
-                train_choice = "1"
+            #train_choice = input("\nEnter training choice (1-4): ")
+            train_choice = 1
+            num_hands = int(input("Enter number of hands to train: "))
+            num_hands = 100000
             
-            if args.numhands != 0:
-                num_hands = args.numhands
-            else:
-                num_hands = int(input("Enter number of hands to train: "))
-
             train_oop = train_choice in ["1", "2"]
             train_ip = train_choice in ["1", "3"]
             
@@ -206,8 +177,6 @@ def main(args):
             train_dqn_poker(game, num_hands, batch_size=128, train_ip=train_ip, train_oop=train_oop)
             end_time = time.time()
             print(f"Total Training Time: {end_time - start_time:.2f} seconds")
-            if args.interactive == False:
-                sys.exit(0)
 
         elif choice == "2":
             position = input("Enter your position (oop/ip): ").lower()
@@ -230,58 +199,33 @@ def main(args):
                 state_size=STATE_SIZE
             )
 
-            play_against_ai(game,args)
+            play_against_ai(game)
 
         elif choice == "3":
             print("Exiting...")
             sys.exit(0)
         
         else:
-            #print("Invalid choice. Please try again.")
-            print("Invalid choice closing...")
-            sys.exit(0)
+            print("Invalid choice. Please try again.")
 
-def play_against_ai(game,args):
+def play_against_ai(game):
     while True:
-        game_state, oop_reward, ip_reward = game.play_hand()  # Unpack all three values
-        print("\nFinal Chip Counts:")
-        print(f"OOP Player chips: {game_state['oop_player']['chips']}")
-        print(f"IP Player chips: {game_state['ip_player']['chips']}")
-        
-        # Optionally show rewards
-        print(f"\nHand Results:")
-        print(f"OOP Reward: {oop_reward}")
-        print(f"IP Reward: {ip_reward}")
+        game_state = game.play_hand()
+        #print("\nFinal Chip Counts:")
+        #print(f"OOP Player chips: {game_state['oop_player']['chips']}")
+        #print(f"IP Player chips: {game_state['ip_player']['chips']}")
          
-        play_again = input("\nDo you want to play again (y/n)? ")
-        if play_again.lower() != 'y':
+        play_again = input("Do you want to play again (y/n)")
+        if play_again != 'y':
             break
         
 def save_model(agent, position):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # Determine model type
-    model_type = "plo" if isinstance(agent.model, PLONetwork) else "dqn"
-    
-    # Create models directory if it doesn't exist
-    os.makedirs("./models", exist_ok=True)
-    
-    # Save with architecture type in filename
-    filename = f"./models/{position}_{model_type}_model_{timestamp}.pth"
+    filename = f"./models/{position}_dqn_model_{timestamp}.pth"
     torch.save(agent.model.state_dict(), filename)
-    print(f"Saved {model_type.upper()} {position} model: {filename}")
+    print(f"Saved {position} model: {filename}")
 
 if __name__ == "__main__":
-    import argparse
     start_http_server(8000)
-
-    parser = argparse.ArgumentParser(description="PLO Training Simulator",prog="python3 train.py")
-    parser.add_argument("-i","--interactive", help="Set to 1 for interactive mode, must set hands if this flag used",action="store_false")
-    parser.add_argument("-n","--numhands", help="Set number of hands to run", type=int, default=0)
-    args = parser.parse_args()
-    #print(args)
-    #print((args.interactive))
-    #print((args.numhands))
-
-    main(args)
+    main()
 
