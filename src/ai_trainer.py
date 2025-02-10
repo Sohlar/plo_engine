@@ -589,11 +589,12 @@ class PokerGame:
             valid_actions.extend(["call", "bet", "fold"])
         # fmt: on
         max_bet = self.calculate_max_preflop_bet_size()
+
         if self.num_actions == 0:
             min_bet = max(MINIMUM_BET_INCREMENT, self.current_bet * 2)
         else:
             print(f"Calculating min bet: {self.current_bet} - {self.previous_bet}")
-            min_bet = max(MINIMUM_BET_INCREMENT, (self.current_bet - self.previous_bet) * 2)
+            min_bet = max(MINIMUM_BET_INCREMENT, (self.current_bet - self.previous_bet) + self.current_bet)
         max_bet = max(max_bet, min_bet)
 
         max_bet = min(max_bet, self.current_player.chips)
@@ -627,7 +628,6 @@ class PokerGame:
 
             max_bet = min(max_raise, player_chips)
 
-        max_bet = (max_bet // MINIMUM_BET_INCREMENT) * MINIMUM_BET_INCREMENT
         return max_bet
 
     def calculate_max_postflop_bet_size(self, initial_pot):
@@ -679,6 +679,7 @@ class PokerGame:
                 self.current_player.chips -= final_bet_size - self.oop_committed
                 self.pot += final_bet_size - self.oop_committed
                 self.oop_committed = final_bet_size
+                self.previous_bet = self.current_bet
                 self.current_bet = final_bet_size
                 update_bet_size("ip", final_bet_size, self.pot)
         else:
