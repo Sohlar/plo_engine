@@ -9,4 +9,4 @@ def check():
     return train.main(args)
 
 def test_answer():
-    assert check()
+    assert check() # This is the assert that needs to pass
