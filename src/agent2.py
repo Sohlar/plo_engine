@@ -7,16 +7,18 @@ import torch.cuda
 import random
 from collections import deque
 from metrics import q_value, epsilon, action_taken, bet_size_metric
+from constants import ACTION_MAP
 
 # Add near top of file, after imports
-action_to_index = {
-    'fold': 0,
-    'check': 1,
-    'call': 2,
-    'bet': 3
-}
+# action_to_index = {
+#     'fold': 0,
+#     'check': 1,
+#     'call': 2,
+#     'bet': 3
+# }
 
-index_to_action = {v: k for k, v in action_to_index.items()}
+# Use ACTION_MAP instead of action_to_index
+index_to_action = {v: k for k, v in ACTION_MAP.items()}
 
 class PLONetwork(nn.Module):
     def __init__(self, state_size):
@@ -128,7 +130,7 @@ class MCTSNode:
         for action in valid_actions:
             new_state = self.simulate_action(self.state, action)
             child = MCTSNode(new_state, parent=self)
-            child.prior_policy = policy_probs[action_to_index[action]]
+            child.prior_policy = policy_probs[ACTION_MAP[action]]
             self.children[action] = child
 
 
@@ -203,8 +205,8 @@ class DQNAgent:
             policy, value = self.model(state_tensor)
 
         # Convert policy to action probabilities
-        action_map = {"fold": 0, "check": 1, "call": 2, "bet": 3}
-        valid_action_indeces = [action_map[action] for action in valid_actions]
+        # action_map = {"fold": 0, "check": 1, "call": 2, "bet": 3}
+        valid_action_indeces = [ACTION_MAP[action] for action in valid_actions]
 
         # Filter and normalize probabilities for valid actions
         valid_probs = policy[0][valid_action_indeces]
@@ -279,7 +281,7 @@ class DQNAgent:
         """Calculate bet size based on hand strength and action probability"""
         # Scale bet size based on value and action probability
         sizing_factor = (value+1) / 2  # Convert from [-1,1] to [0,1]
-        confidence = action_prob.item() if torch.is_tensor(action_prob) else action_prob  # Convert tensor to float
+        confidence = action_prob if torch.is_tensor(action_prob) else action_prob  # Convert tensor to float
 
         # Combine factors for final sizing
         bet_size = min_bet + (max_bet-min_bet) * sizing_factor * confidence

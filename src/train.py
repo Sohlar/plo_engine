@@ -12,11 +12,10 @@ import argparse
 
 from prometheus_client import start_http_server
 from metrics import loss as loss_metric, winrate, episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon, update_system_metrics
+from constants import STATE_SIZE, ACTION_SIZE, STARTING_STACK, MINIMUM_BET_INCREMENT
 
 setup_logging()
 
-STATE_SIZE = 8 + (5*2) + 2*4*2  # Game state features
-ACTION_SIZE = 4  # Available actions
 BATCH_SIZE = 512
 
 def load_model(model_path):
@@ -217,7 +216,8 @@ def main(args):
             game = PokerGame(
                 oop_agent=oop_agent,
                 ip_agent=ip_agent,
-                state_size=STATE_SIZE
+                state_size=STATE_SIZE,
+                batch_size=BATCH_SIZE
             )
             train_dqn_poker(game, num_hands, batch_size=BATCH_SIZE, train_ip=train_ip, train_oop=train_oop)
             end_time = time.time()

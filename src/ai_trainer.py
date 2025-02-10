@@ -20,11 +20,10 @@ from metrics import (
     bet_size_metric,
     update_bet_size,
 )
-
-CONST_100bb = 200
-CONST_200bb = 400
-CONST_300bb = 600
-MINIMUM_BET_INCREMENT = 2
+from constants import (
+    STARTING_STACK, MINIMUM_BET_INCREMENT, SMALL_BLIND, 
+    BIG_BLIND, INITIAL_POT, ACTION_MAP
+)
 
 setup_logging()
 
@@ -57,7 +56,7 @@ class Player:
 
     def reset_chips():
         for player in Player.get_players():
-            player.chips = CONST_100bb
+            player.chips = STARTING_STACK
 
 
 class HumanPlayer(Player):
@@ -94,9 +93,7 @@ class Deck:
 
 
 class PokerGame:
-    def __init__(
-        self, human_position=None, oop_agent=None, ip_agent=None, state_size=None
-    ):
+    def __init__( self, human_position=None, oop_agent=None, ip_agent=None, state_size=None, batch_size=None):
         self.state_size = state_size or (
             7 + (5 * 2) + 2 * 4 * 2
         )  # Use provided state_size or calculate default
@@ -109,12 +106,12 @@ class PokerGame:
         
         # Initialize agents
         if oop_agent is None:
-            self.oop_agent = DQNAgent(self.state_size, self.action_size, batch_size=512)
+            self.oop_agent = DQNAgent(self.state_size, self.action_size, batch_size=batch_size)
         else:
             self.oop_agent = oop_agent
 
         if ip_agent is None:
-            self.ip_agent = DQNAgent(self.state_size, self.action_size, batch_size=512)
+            self.ip_agent = DQNAgent(self.state_size, self.action_size, batch_size=batch_size)
         else:
             self.ip_agent = ip_agent
 
@@ -128,14 +125,14 @@ class PokerGame:
         self.deck = Deck()
 
         if human_position == "oop":
-            self.oop_player = HumanPlayer(name="OOP", chips=200)
-            self.ip_player = Player(name="IP", chips=200)
+            self.oop_player = HumanPlayer(name="OOP", chips=STARTING_STACK)
+            self.ip_player = Player(name="IP", chips=STARTING_STACK)
         elif human_position == "ip":
-            self.oop_player = Player(name="OOP", chips=200)
-            self.ip_player = HumanPlayer(name="IP", chips=200)
+            self.oop_player = Player(name="OOP", chips=STARTING_STACK)
+            self.ip_player = HumanPlayer(name="IP", chips=STARTING_STACK)
         else:
-            self.oop_player = Player(name="OOP", chips=200)
-            self.ip_player = Player(name="IP", chips=200)
+            self.oop_player = Player(name="OOP", chips=STARTING_STACK)
+            self.ip_player = Player(name="IP", chips=STARTING_STACK)
 
         self.initialize_game_state()
 
@@ -205,16 +202,16 @@ class PokerGame:
 
     def initialize_game_state(self):
         self.community_cards = []
-        self.pot = 3
+        self.pot = INITIAL_POT
         self.hand_over = False
         self.previous_bet = 0
-        self.current_bet = 2
+        self.current_bet = SMALL_BLIND
         self.num_actions = 0
         self.last_action = "bet"
         self.current_player = self.ip_player
         self.num_active_players = 2
         self.ip_committed = 1
-        self.oop_committed = 2
+        self.oop_committed = BIG_BLIND
         self.street = "preflop"
         self.waiting_for_action = False
         self.is_allin = False
@@ -227,9 +224,9 @@ class PokerGame:
         self.initialize_game_state()
         self.reset_hands()
         self.deck.shuffle()
-        self.pot = 3
-        self.oop_player.chips = 198
-        self.ip_player.chips = 199
+        self.pot = INITIAL_POT
+        self.oop_player.chips = STARTING_STACK - BIG_BLIND
+        self.ip_player.chips = STARTING_STACK - SMALL_BLIND
         self.deal_cards()
         return self.get_game_state()
 
@@ -345,8 +342,8 @@ class PokerGame:
         return updated_state
 
     def calculate_rewards(self, game_state):
-        oop_reward = game_state["oop_player"]["chips"] - CONST_100bb
-        ip_reward = game_state["ip_player"]["chips"] - CONST_100bb
+        oop_reward = game_state["oop_player"]["chips"] - STARTING_STACK
+        ip_reward = game_state["ip_player"]["chips"] - STARTING_STACK
 
         total_reward = oop_reward + ip_reward
         oop_reward -= total_reward / 2
@@ -376,7 +373,7 @@ class PokerGame:
         logging.info("Resetting Hands")
         self.deck = Deck()
         self.community_cards = []
-        self.pot = 0
+        self.pot = INITIAL_POT
         self.oop_player.hand = []
         self.ip_player.hand = []
         self.current_bet = 2
@@ -952,7 +949,7 @@ class PokerGame:
         
         # For showdown, calculate based on pot equity
         pot_share = state['pot'] / 2  # Simplified equity calculation
-        value = (state['current_player']['chips'] - CONST_100bb + pot_share) / CONST_100bb
+        value = (state['current_player']['chips'] - STARTING_STACK + pot_share) / STARTING_STACK
         return max(min(value, 1.0), -1.0)
 
     def get_valid_actions(self, state):
