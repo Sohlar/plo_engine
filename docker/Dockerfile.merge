@@ -1,0 +1,11 @@
+FROM pybase
+
+# Copy the source code
+COPY src/ /app/src/
+
+# Set environment variables
+ENV PYTHONPATH=/app
+
+# Set default command to merge_models.py but allow overriding arguments
+ENTRYPOINT ["python3", "src/merge_models.py"]
+CMD ["--help"] 
