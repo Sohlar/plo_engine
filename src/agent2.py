@@ -186,9 +186,9 @@ class DQNAgent:
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state, valid_actions, max_bet, min_bet):
-        print('\n')
-        print(state)
-        print("\n")
+        #print('\n')
+        #print(state)
+        #print("\n")
         street = self._get_street(state)
         pot_size = state[0]  # First value in state tensor is pot size
         
@@ -205,7 +205,6 @@ class DQNAgent:
             policy, value = self.model(state_tensor)
 
         # Convert policy to action probabilities
-        # action_map = {"fold": 0, "check": 1, "call": 2, "bet": 3}
         valid_action_indeces = [ACTION_MAP[action] for action in valid_actions]
 
         # Filter and normalize probabilities for valid actions
@@ -223,7 +222,8 @@ class DQNAgent:
             action_idx = valid_probs.argmax().item()
             action = valid_actions[action_idx]
         
-        if action == "bet":
+        # Only return bet size if bet is a valid action and was chosen
+        if action == "bet" and "bet" in valid_actions:
             bet_size = self._get_bet_size(value.item(), valid_probs[action_idx], max_bet, min_bet)
             return action, bet_size
 
@@ -263,9 +263,18 @@ class DQNAgent:
                 node.visit_count += 1
                 node.value_sum += value
         
-        best_action = max(root.children.items(), key=lambda x: x[1].visit_count) [0]
+        # Filter children to only include valid actions
+        valid_children = {action: node for action, node in root.children.items() 
+                         if action in valid_actions}
+        
+        if not valid_children:
+            # If no valid children (shouldn't happen), pick random valid action
+            action = random.choice(valid_actions)
+            return action, None
+        
+        best_action = max(valid_children.items(), key=lambda x: x[1].visit_count)[0]
 
-        if best_action == "bet":
+        if best_action == "bet" and "bet" in valid_actions:
             bet_size = self._get_bet_size(
                 root.children[best_action].value_sum / root.children[best_action].visit_count,
                 root.children[best_action].prior_policy,
