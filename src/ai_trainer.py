@@ -24,8 +24,6 @@ from constants import (
     STARTING_STACK, MINIMUM_BET_INCREMENT, SMALL_BLIND, 
     BIG_BLIND, INITIAL_POT, ACTION_MAP
 )
-from collections import deque
-import gc
 
 setup_logging()
 
@@ -167,41 +165,40 @@ class PokerGame:
         )
 
     def _get_state_representation(self, state=None, current_player=None):
-        # Pre-allocate tensor once and reuse
-        if not hasattr(self, '_state_tensor'):
-            self._state_tensor = torch.zeros(self.state_size, device=self.device)
-        
-        # Update values in-place
-        self._state_tensor[0] = float(state["pot"])
-        self._state_tensor[1] = float(len(state["community_cards"]))
-        self._state_tensor[2] = float(state["previous_bet"])
-        self._state_tensor[3] = float(state["current_bet"])
-        self._state_tensor[4] = float(state["oop_player"]["chips"])
-        self._state_tensor[5] = float(state["ip_player"]["chips"])
-        self._state_tensor[6] = float(state["oop_player"]["committed"])
-        self._state_tensor[7] = float(state["ip_player"]["committed"])
-        
+        # Convert the game state to a numerical representation for the DQN
+        if state is None:
+            state = self._get_game_state()
+        representation = [
+            float(state["pot"]),
+            float(len(state["community_cards"])),
+            float(state["previous_bet"]),
+            float(state["current_bet"]),
+            float(state["oop_player"]["chips"]),
+            float(state["ip_player"]["chips"]),
+            float(state["oop_player"]["committed"]),
+            float(state["ip_player"]["committed"]),
+        ]
         # Add encoded representations of community cards and player hands
         community_cards = state["community_cards"] + [""] * (
             5 - len(state["community_cards"])
         )
         for card in community_cards:
-            self._state_tensor[8:10] = self._encode_card(card)
+            representation.extend(self._encode_card(card))
 
         if current_player == self.oop_player:
             for card in state["oop_player"]["hand"]:
-                self._state_tensor[10:14] = self._encode_card(card)
-            self._state_tensor[14:18] = [0, 0] * 4
+                representation.extend(self._encode_card(card))
+            representation.extend([0, 0] * 4)
         else:
             for card in state["ip_player"]["hand"]:
-                self._state_tensor[10:14] = self._encode_card(card)
-            self._state_tensor[14:18] = [0, 0] * 4
+                representation.extend(self._encode_card(card))
+            representation.extend([0, 0] * 4)
 
         assert (
-            self._state_tensor.shape[0] == self.state_size
+            len(representation) == self.state_size
         ), f"State size mismatch: expected { self.state_size }"
 
-        return self._state_tensor.clone()  # Return a clone to prevent modification
+        return torch.FloatTensor(representation)
 
     def _encode_card(self, card):
         if not card:
