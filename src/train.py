@@ -16,7 +16,7 @@ from constants import STATE_SIZE, ACTION_SIZE, STARTING_STACK, MINIMUM_BET_INCRE
 
 setup_logging()
 
-BATCH_SIZE = 512
+BATCH_SIZE = 8
 
 def load_model(model_path):
     agent = DQNAgent(STATE_SIZE, ACTION_SIZE, BATCH_SIZE)

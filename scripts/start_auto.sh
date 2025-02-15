@@ -34,6 +34,6 @@ docker run -d \
     --network plo_network \
     -v ./models:/app/models \
     -p 8000:8000 \
-    plo_trainer python3 src/train.py -i -n 50000
+    plo_trainer python3 src/train.py -i -n 10000
 
 echo "Access Prometheus at http://localhost:9090"

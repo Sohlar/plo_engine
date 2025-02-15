@@ -306,6 +306,7 @@ class DQNAgent:
         return bet_size
 
 
+    @torch.compile
     def replay(self, batch_size):
         """Train the model using experiences from the replay memory."""
         if len(self.memory) < self.batch_size:
