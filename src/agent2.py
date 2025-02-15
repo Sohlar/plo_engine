@@ -43,6 +43,7 @@ class PLONetwork(nn.Module):
             nn.Tanh()
         )
 
+    @torch.compile
     def forward(self, x):
         shared_features = self.shared(x)
         policy_logits = self.policy_head(shared_features)
@@ -123,6 +124,7 @@ class MCTSNode:
         )
         return q_value + exploration
 
+    @torch.compile
     def expand(self, policy_probs):
         """Expands node with children for all valid actions"""
         valid_actions = self.get_valid_actions(self.state)
@@ -166,6 +168,7 @@ class DQNAgent:
         self.min_bet = 2
 
 
+    @torch.compile
     def remember(self, state, action, reward, next_state, done):
         """
         Store a transition in the replay memory.
@@ -185,6 +188,7 @@ class DQNAgent:
 
         self.memory.append((state, action, reward, next_state, done))
 
+    @torch.compile
     def act(self, state, valid_actions, max_bet, min_bet):
         #print('\n')
         #print(state)
@@ -198,6 +202,7 @@ class DQNAgent:
         else:
             return self._get_mcts_action(state, valid_actions, max_bet, min_bet)
         
+    @torch.compile
     def _get_nash_action(self, state, valid_actions, max_bet, min_bet):
         state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
 
