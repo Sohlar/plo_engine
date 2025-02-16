@@ -19,6 +19,8 @@ from constants import ACTION_MAP
 
 # Use ACTION_MAP instead of action_to_index
 index_to_action = {v: k for k, v in ACTION_MAP.items()}
+torch._dynamo.config.cache_size_limit = 64
+torch._dynamo.config.capture_scalar_outputs = True
 
 class PLONetwork(nn.Module):
     def __init__(self, state_size):
@@ -43,6 +45,7 @@ class PLONetwork(nn.Module):
             nn.Tanh()
         )
 
+    @torch.compile
     def forward(self, x):
         shared_features = self.shared(x)
         policy_logits = self.policy_head(shared_features)

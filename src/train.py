@@ -10,6 +10,9 @@ import torch.cuda
 import datetime
 import argparse
 
+import cProfile
+import pstats
+
 from prometheus_client import start_http_server
 from metrics import loss as loss_metric, winrate, episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon, update_system_metrics
 from constants import STATE_SIZE, ACTION_SIZE, STARTING_STACK, MINIMUM_BET_INCREMENT
@@ -295,5 +298,8 @@ if __name__ == "__main__":
     parser.add_argument("-i","--interactive", help="Set to 1 for interactive mode, must set hands if this flag used",action="store_false")
     parser.add_argument("-n","--numhands", help="Set number of hands to run", type=int, default=0)
     args = parser.parse_args()
+    #cProfile.run('main(args)', 'output.prof')
+    #p = pstats.Stats('output.prof')
+    #p.sort_stats('cumulative').print_stats(10)  # Sort by cumulative time, show top 10
     main(args)
 

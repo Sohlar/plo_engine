@@ -25,3 +25,4 @@ pyOpenSSL         # Required for secure connections
 service-identity  # Required for secure connections
 pytest
 flake8
+torchvision
