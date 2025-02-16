@@ -9,15 +9,6 @@ from collections import deque
 from metrics import q_value, epsilon, action_taken, bet_size_metric
 from constants import ACTION_MAP
 
-# Add near top of file, after imports
-# action_to_index = {
-#     'fold': 0,
-#     'check': 1,
-#     'call': 2,
-#     'bet': 3
-# }
-
-# Use ACTION_MAP instead of action_to_index
 index_to_action = {v: k for k, v in ACTION_MAP.items()}
 torch._dynamo.config.cache_size_limit = 64
 torch._dynamo.config.capture_scalar_outputs = True
@@ -335,16 +326,8 @@ class DQNAgent:
         value_target = rewards + self.gamma * next_value.squeeze(-1) * (1-dones)
         value_loss = nn.MSELoss()(current_value.squeeze(-1), value_target)
 
-        # Calculate policy target
-        advantages = rewards + self.gamma * next_value.squeeze(-1) * (1-dones) - current_value.squeeze(-1)
-        policy_target = current_policy.clone()
-        
-        # Update policy based on advantages
-        for i in range(batch_size):
-            policy_target[i, actions[i]] = policy_target[i, actions[i]] + advantages[i]
-
         # Policy loss with cross entropy
-        policy_loss = nn.CrossEntropyLoss()(current_policy, policy_target)
+        policy_loss = nn.CrossEntropyLoss()(current_policy, actions)
 
         # Combined loss
         loss = value_loss + policy_loss
