@@ -19,6 +19,8 @@ from constants import ACTION_MAP
 
 # Use ACTION_MAP instead of action_to_index
 index_to_action = {v: k for k, v in ACTION_MAP.items()}
+torch._dynamo.config.cache_size_limit = 64
+torch._dynamo.config.capture_scalar_outputs = True
 
 class PLONetwork(nn.Module):
     def __init__(self, state_size):
@@ -124,7 +126,6 @@ class MCTSNode:
         )
         return q_value + exploration
 
-    @torch.compile
     def expand(self, policy_probs):
         """Expands node with children for all valid actions"""
         valid_actions = self.get_valid_actions(self.state)
@@ -168,7 +169,6 @@ class DQNAgent:
         self.min_bet = 2
 
 
-    @torch.compile
     def remember(self, state, action, reward, next_state, done):
         """
         Store a transition in the replay memory.
@@ -188,7 +188,6 @@ class DQNAgent:
 
         self.memory.append((state, action, reward, next_state, done))
 
-    @torch.compile
     def act(self, state, valid_actions, max_bet, min_bet):
         #print('\n')
         #print(state)
@@ -202,7 +201,6 @@ class DQNAgent:
         else:
             return self._get_mcts_action(state, valid_actions, max_bet, min_bet)
         
-    @torch.compile
     def _get_nash_action(self, state, valid_actions, max_bet, min_bet):
         state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
 
@@ -311,7 +309,6 @@ class DQNAgent:
         return bet_size
 
 
-    @torch.compile
     def replay(self, batch_size):
         """Train the model using experiences from the replay memory."""
         if len(self.memory) < self.batch_size:

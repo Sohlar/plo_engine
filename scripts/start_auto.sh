@@ -32,8 +32,10 @@ echo "Starting PLO trainer in interactive mode..."
 docker run -d \
     --name plo_trainer \
     --network plo_network \
+    --cap-add SYS_NICE \
     -v ./models:/app/models \
     -p 8000:8000 \
-    plo_trainer python3 src/train.py -i -n 10000
+    plo_trainer python3 src/train.py -i -n 1000
+    #plo_trainer numactl -C 0-15 --membind 0 python3 src/train.py -i -n 1000
 
 echo "Access Prometheus at http://localhost:9090"
